@@ -1,0 +1,5 @@
+{
+  "extends": "@qlct/tsconfig/base.json",
+  "include": [],
+  "references": []
+}

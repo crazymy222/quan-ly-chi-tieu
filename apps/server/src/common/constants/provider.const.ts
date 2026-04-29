@@ -1,0 +1,3 @@
+export const PROVIDER = {
+  CACHE_MANAGER: 'CACHE_MANAGER',
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@qlct/types",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./user.type": "./user.type.ts",
+    "./api-response.type": "./api-response.type.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf .turbo node_modules"
+  },
+  "devDependencies": {
+    "@qlct/eslint-config": "workspace:*",
+    "@qlct/tsconfig": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

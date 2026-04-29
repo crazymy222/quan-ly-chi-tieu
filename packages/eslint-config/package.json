@@ -1,0 +1,43 @@
+{
+  "name": "@qlct/eslint-config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./base.js",
+  "exports": {
+    "./base": {
+      "default": "./base.js"
+    },
+    "./next": {
+      "default": "./next.js"
+    },
+    "./node": {
+      "default": "./node.js"
+    },
+    "./react-native": {
+      "default": "./react-native.js"
+    }
+  },
+  "files": [
+    "base.js",
+    "next.js",
+    "node.js",
+    "index.d.ts"
+  ],
+  "dependencies": {
+    "@eslint/js": "^9.17.0",
+    "typescript-eslint": "^8.18.2",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.17.0",
+    "eslint-config-next": ">=15",
+    "typescript": "^5.7.2"
+  },
+  "peerDependenciesMeta": {
+    "eslint-config-next": {
+      "optional": true
+    }
+  }
+}

@@ -1,0 +1,52 @@
+# Node / pnpm
+**/node_modules
+**/.pnpm-store
+
+# Build outputs
+**/dist
+**/build
+**/out
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+
+# Git & VCS
+.git
+.gitignore
+.gitattributes
+
+# Env (tuyệt đối KHÔNG copy vào image)
+**/.env
+**/.env.*
+!**/.env.example
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Logs & caches
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/pnpm-debug.log*
+**/.eslintcache
+**/.cache
+**/coverage
+**/.nyc_output
+
+# Docker chính nó
+**/Dockerfile*
+**/.dockerignore
+docker-compose*.yml
+
+# Docs nặng không cần cho build
+**/*.md
+!README.md
+
+# Các test files (tuỳ chọn — bật nếu muốn image nhẹ hơn)
+# **/*.test.ts
+# **/*.test.tsx
+# **/*.spec.ts
+# **/__tests__
