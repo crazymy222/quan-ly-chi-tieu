@@ -3,6 +3,7 @@
 import { TRANSACTION_CATEGORIES } from "@/constants/transaction.const";
 import { useCreateTransaction } from "@/hooks/useCreateTransaction";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useGetDefaultWallet } from "@/hooks/useGetDefaultWallet";
 import { GET_PAGINATION_TRANSACTION_QUERY_KEY } from "@/hooks/useGetInfiniteTransaction";
 import { GET_PAGINATION_WALLET_QUERY_KEY, useGetInfiniteWallet } from "@/hooks/useGetInfiniteWallet";
 import { useGetReciever } from "@/hooks/useGetReciever";
@@ -15,11 +16,12 @@ import { useCreateTransactionDialogStore } from "@/stores/useCreateTransactionDi
 import { useShowBalanceStore } from "@/stores/useShowBalanceStore";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDownIcon, EyeIcon } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod/v3";
 import { useShallow } from "zustand/react/shallow";
+import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -30,8 +32,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Spinner } from "./ui/spinner";
 import { Textarea } from "./ui/textarea";
-import { useGetDefaultWallet } from "@/hooks/useGetDefaultWallet";
-import { Badge } from "./ui/badge";
 
 export default function CreateTransactionDialog() {
   const formId = useId();
