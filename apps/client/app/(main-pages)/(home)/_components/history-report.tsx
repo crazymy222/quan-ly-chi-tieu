@@ -8,13 +8,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { useDownloadReport } from "@/hooks/useDownloadReport";
 import { useGetInfiniteTransaction } from "@/hooks/useGetInfiniteTransaction";
-// import { useGetInfiniteTransaction } from "@/hooks/useGetInfiniteTransaction";
 import { useGetInfiniteWallet } from "@/hooks/useGetInfiniteWallet";
 import { useGetStatistics } from "@/hooks/useGetStatistics";
 import { useShowBalanceStore } from "@/stores/useShowBalanceStore";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, DownloadIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 
@@ -48,12 +48,17 @@ export default function HistoryReport() {
     enabled: !!selectedWalletId && !!date?.from && !!date?.to,
   });
 
+  const { downloadReport, isPending } = useDownloadReport()
 
   useEffect(() => {
     if (wallets?.length > 0 && !selectedWalletId) {
       setSellectedWalletId(wallets[0]?.id);
     }
   }, [wallets, selectedWalletId]);
+
+  const handleDownloadReport = () => {
+    downloadReport({ walletId: selectedWalletId, fromDate: date?.from, toDate: date?.to });
+  }
 
   return (
     <div className="flex-1 flex flex-col gap-2 border border-border rounded-lg p-3 overflow-y-auto">
@@ -185,9 +190,20 @@ export default function HistoryReport() {
                   </div>
                 </div>
                 <div className="flex flex-col flex-1 bg-muted rounded-lg p-2 space-y-2 overflow-y-auto">
-                  <p className="font-semibold">
-                    Danh sách giao dịch
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold">
+                      Danh sách giao dịch
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={handleDownloadReport}
+                      disabled={isPending}
+                    >
+                      {isPending ? <Spinner className="size-3" /> : <DownloadIcon className="size-3" />}
+                      <span>Xuất file Excel</span>
+                    </Button>
+                  </div>
                   <ul className="flex flex-col flex-1 gap-2 overflow-y-auto">
                     {
                       isLoadingTransactions

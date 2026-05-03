@@ -27,6 +27,20 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let status: number = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string = INTERNAL_SERVER_ERROR_MESSAGE;
     let error: string = 'UnknowError';
+    let retryAfterSeconds: number | undefined;
+
+    const parseRetryAfter = (value: unknown): number | undefined => {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string' && value !== '') {
+        const n = Number(value);
+        if (Number.isFinite(n)) {
+          return n;
+        }
+      }
+      return undefined;
+    };
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -38,9 +52,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
         message = (exceptionResponse as any).message || exception.message;
         error = (exceptionResponse as any).error || exception.constructor.name;
+        retryAfterSeconds = parseRetryAfter((exceptionResponse as Record<string, unknown>).retryAfter);
       } else {
         message = exception.message;
         error = exception.constructor.name;
+      }
+
+      if (retryAfterSeconds === undefined) {
+        const c = exception.cause;
+        if (typeof c === 'object' && c !== null) {
+          retryAfterSeconds = parseRetryAfter((c as Record<string, unknown>).retryAfter);
+        }
       }
     } else if (exception instanceof Error) {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -92,6 +114,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     try {
+      if (
+        retryAfterSeconds !== undefined &&
+        retryAfterSeconds >= 0 &&
+        status === HttpStatus.TOO_MANY_REQUESTS
+      ) {
+        response.setHeader('Retry-After', String(Math.ceil(retryAfterSeconds)));
+      }
       response.status(status).json(errorResponse);
     } catch (sendErr) {
       this.logger.error(

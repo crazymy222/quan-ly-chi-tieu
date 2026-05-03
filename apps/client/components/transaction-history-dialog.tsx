@@ -19,7 +19,16 @@ export default function TransactionHistoryDialog() {
     }))
   );
   const open = useCreateTransactionDialogStore((state) => state.open);
-  const { transactions, totalCount, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useGetInfiniteTransaction();
+  const {
+    transactions,
+    totalCount,
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage
+  } = useGetInfiniteTransaction({
+    enabled: isOpen,
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

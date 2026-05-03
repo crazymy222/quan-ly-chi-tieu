@@ -13,3 +13,5 @@ export const getTransactionHistory = async (params: GetTransactionHistoryParams)
 export const getStatistics = async (params: GetStatisticsParams) => api.get<DefaultResponse<GetStatisticsResponse>>('/transaction/statistics', { params });
 
 export const getDetailTransaction = async (id: string) => api.get<DefaultResponse<GetDetailTransactionResponse>>('/transaction/' + id);
+
+export const downloadReport = async (params: GetStatisticsParams) => api.get<Blob>('/transaction/excel-export', { params, responseType: 'blob' });

@@ -4,11 +4,16 @@ import { useMemo } from "react";
 
 export const GET_DETAIL_TRANSACTION_QUERY_KEY = 'get-detail-transaction';
 
-export const useGetDetailTransaction = (id: string) => {
+interface Props {
+  id: string;
+  enabled?: boolean;
+} 
+
+export const useGetDetailTransaction = ({ id, enabled }: Props = { enabled: true, id: '' }) => {
   const { data, isLoading, isError } = useQuery({
     queryKey: [GET_DETAIL_TRANSACTION_QUERY_KEY, id],
     queryFn: () => getDetailTransaction(id),
-    enabled: !!id,
+    enabled: !!id && enabled,
   });
 
   const detailTransaction = useMemo(() => data?.data?.data || null, [data]);
