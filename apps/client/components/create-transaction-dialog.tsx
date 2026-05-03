@@ -1,24 +1,27 @@
 "use client"
 
-import { TRANSACTION_CATEGORIES, TransactionType } from "@/constants/transaction.const";
+import { TRANSACTION_CATEGORIES } from "@/constants/transaction.const";
 import { useCreateTransaction } from "@/hooks/useCreateTransaction";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { GET_PAGINATION_TRANSACTION_QUERY_KEY } from "@/hooks/useGetInfiniteTransaction";
 import { GET_PAGINATION_WALLET_QUERY_KEY, useGetInfiniteWallet } from "@/hooks/useGetInfiniteWallet";
+import { useGetReciever } from "@/hooks/useGetReciever";
+import { GET_STATISTICS_QUERY_KEY } from "@/hooks/useGetStatistics";
 import { GET_TOTAL_BALANCE_QUERY_KEY } from "@/hooks/useGetTotalBalance";
+import { GET_TOTAL_TRANSACTION_QUERY_KEY } from "@/hooks/useGetTotalTransaction";
 import { useInvalidateQueries } from "@/hooks/useRevalidateQuery";
 import { cn } from "@/lib/utils";
 import { useCreateTransactionDialogStore } from "@/stores/useCreateTransactionDialogStore";
 import { useShowBalanceStore } from "@/stores/useShowBalanceStore";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { BanknoteArrowDownIcon, BanknoteArrowUpIcon, CalendarIcon, EyeIcon } from "lucide-react";
-import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
-import { useId, useMemo } from "react";
+import { ChevronDownIcon, EyeIcon } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod/v3";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "./ui/button";
-import { Calendar } from "./ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
 import InfiniteScroll from "./ui/Infinite-scroll";
@@ -27,9 +30,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Spinner } from "./ui/spinner";
 import { Textarea } from "./ui/textarea";
-import { GET_PAGINATION_TRANSACTION_QUERY_KEY } from "@/hooks/useGetInfiniteTransaction";
-import { GET_TOTAL_TRANSACTION_QUERY_KEY } from "@/hooks/useGetTotalTransaction";
-import { GET_STATISTICS_QUERY_KEY } from "@/hooks/useGetStatistics";
+import { useGetDefaultWallet } from "@/hooks/useGetDefaultWallet";
+import { Badge } from "./ui/badge";
 
 export default function CreateTransactionDialog() {
   const formId = useId();
@@ -86,16 +88,16 @@ export default function CreateTransactionDialog() {
 }
 
 const formSchema = z.object({
-  transactionType: z.enum(Object.values(TransactionType) as [string, ...string[]], { message: "Vui lòng chọn loại giao dịch" }),
   amount: z.number().min(0),
-  transactionDate: z
-    .date({ message: "Vui lòng điền ngày giao dịch hợp lệ" })
-    .refine((value) => new Date(value).getTime() <= new Date(new Date().setHours(0, 0, 0, 0)).getTime(), { message: "Ngày giao dịch không hợp lệ" }),
   transactionCategory: z.enum(Object.values(TRANSACTION_CATEGORIES) as [string, ...string[]], { message: "Vui lòng chọn loại giao dịch" }),
   walletId: z
     .string()
     .trim()
     .min(1, { message: "Vui lòng chọn ví" }),
+  recieverId: z
+    .string()
+    .trim()
+    .min(1, { message: "Vui lòng chọn người nhận" }),
   note: z
     .string()
     .trim()
@@ -109,7 +111,38 @@ interface CreateTransactionFormProps {
 }
 
 function CreateTransactionForm({ formId, onSubmit }: CreateTransactionFormProps) {
-  const { wallets, totalCount, isLoading: isLoadingWallets, hasNextPage, isFetchingNextPage, fetchNextPage } = useGetInfiniteWallet(); 4
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 500);
+  const [isOpenRecieverPopover, setIsOpenRecieverPopover] = useState(false);
+
+  const { defaultWallet } = useGetDefaultWallet();
+
+  const {
+    wallets,
+    totalCount,
+    isLoading: isLoadingWallets,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage
+  } = useGetInfiniteWallet({
+    params: {
+      priorityId: defaultWallet?.id,
+    }
+  });
+
+  const {
+    recievers,
+    totalCount: totalRecieversCount,
+    isLoading: isLoadingRecievers,
+    hasNextPage: hasNextPageRecievers,
+    isFetchingNextPage: isFetchingNextPageRecievers,
+    fetchNextPage: fetchNextPageRecievers
+  } = useGetReciever({
+    params: {
+      search: debouncedSearch,
+    }
+  });
+
   const { isShow, toggle } = useShowBalanceStore(
     useShallow((state) => ({
       isShow: state.isShow,
@@ -120,24 +153,27 @@ function CreateTransactionForm({ formId, onSubmit }: CreateTransactionFormProps)
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      transactionType: TransactionType.INCOME,
       amount: 0,
-      transactionDate: undefined,
       transactionCategory: "",
       note: "",
-      walletId: "",
+      walletId: defaultWallet?.id ?? "",
+      recieverId: "",
     },
   });
 
-  const [walletId] = form.watch(["walletId"]);
+  const [walletId, recieverId] = form.watch(["walletId", "recieverId"]);
 
   const selectedWallet = useMemo(
     () => wallets.find((wallet) => wallet.id === walletId),
     [walletId, wallets]
   );
+  const selectedReciever = useMemo(
+    () => recievers.find((reciever) => reciever.id === recieverId),
+    [recieverId, recievers]
+  );
 
   const handleSubmit = (data: z.infer<typeof formSchema>) => {
-    if (selectedWallet && data.transactionType === TransactionType.EXPENSE && selectedWallet.balance < data.amount) {
+    if (selectedWallet && selectedWallet.balance < data.amount) {
       form.setError("amount", { message: "Số dư ví không đủ" });
       return;
     }
@@ -163,7 +199,10 @@ function CreateTransactionForm({ formId, onSubmit }: CreateTransactionFormProps)
                 <SelectTrigger aria-invalid={fieldState.invalid} id={formId + field.name}>
                   <SelectValue placeholder="Chọn ví" />
                 </SelectTrigger>
-                <SelectContent position="popper">
+                <SelectContent
+                  position="popper"
+                  className="min-w-0 w-(--radix-select-trigger-width) max-w-(--radix-select-trigger-width)"
+                >
                   <SelectGroup>
                     {
                       isLoadingWallets
@@ -177,8 +216,17 @@ function CreateTransactionForm({ formId, onSubmit }: CreateTransactionFormProps)
                             <>
                               {
                                 wallets.map((wallet) => (
-                                  <SelectItem key={wallet.id} value={wallet.id}>
-                                    {wallet.name}
+                                  <SelectItem
+                                    key={wallet.id}
+                                    value={wallet.id}
+                                    textValue={wallet.name}
+                                  >
+                                    <span className="min-w-0 truncate">{wallet.name}</span>
+                                    {wallet.id === defaultWallet?.id ? (
+                                      <Badge className="text-white!">
+                                        Ví mặc định
+                                      </Badge>
+                                    ) : null}
                                   </SelectItem>
                                 ))
                               }
@@ -224,39 +272,87 @@ function CreateTransactionForm({ formId, onSubmit }: CreateTransactionFormProps)
 
         <Controller
           control={form.control}
-          name="transactionType"
+          name="recieverId"
           render={({ field, fieldState }) => (
-            <Field>
-              <FieldLabel htmlFor={formId + field.name}>Loại giao dịch</FieldLabel>
-              <RadioGroupPrimitive.Root
-                className="grid w-full grid-cols-2 gap-3"
-                value={field.value}
-                onValueChange={field.onChange}
-              >
-                {Object.values(TransactionType).map((type) => (
-                  <RadioGroupPrimitive.Item
-                    className="rounded-lg px-3 py-2 ring-[1px] ring-border data-[state=checked]:ring-2 data-[state=checked]:ring-primary"
-                    key={type}
-                    value={type}
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel htmlFor={formId + field.name}>Người nhận</FieldLabel>
+              <Popover open={isOpenRecieverPopover} onOpenChange={setIsOpenRecieverPopover}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between overflow-hidden font-normal"
                   >
-                    <div className={cn("flex items-center gap-2 justify-center",
-                      field.value === type ? "text-primary" : ""
+                    <span className={cn(
+                      "truncate",
+                      !field.value && "text-muted-foreground"
                     )}>
-                      <span className="font-bold tracking-tight text-sm">{type === TransactionType.INCOME ? "Thu" : "Chi"}</span>
                       {
-                        type === TransactionType.INCOME ? (
-                          <BanknoteArrowDownIcon className="size-4" />
+                        field.value ? (selectedReciever?.displayName || selectedReciever?.email) : "Chọn người nhận"
+                      }
+                    </span>
+                    <ChevronDownIcon className="opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-(--radix-popover-trigger-width) max-w-none p-0">
+                  <Command shouldFilter={false}>
+                    <CommandInput
+                      placeholder="Tìm kiếm người nhận"
+                      className="h-9"
+                      value={search}
+                      onValueChange={(value) => setSearch(value)}
+                    />
+                    <CommandList>
+                      {
+                        isLoadingRecievers ? (
+                          <div className="flex items-center justify-center py-4 opacity-50">
+                            <Spinner className="size-4" />
+                          </div>
                         ) : (
-                          <BanknoteArrowUpIcon className="size-4" />
+                          totalRecieversCount > 0 ? (
+                            <CommandGroup>
+                              {
+                                recievers.map((reciever) => (
+                                  <CommandItem
+                                    key={reciever.id}
+                                    value={reciever.id}
+                                    showCheck={field.value === reciever.id}
+                                    className="overflow-hidden gap-x-2"
+                                    onSelect={() => {
+                                      field.onChange(reciever.id);
+                                      setIsOpenRecieverPopover(false);
+                                    }}
+                                  >
+                                    <span className="truncate">
+                                      {reciever?.displayName || reciever?.email}
+                                    </span>
+                                  </CommandItem>
+                                ))
+                              }
+                              <InfiniteScroll
+                                hasMore={hasNextPageRecievers}
+                                isLoading={isFetchingNextPageRecievers}
+                                next={fetchNextPageRecievers}
+                              >
+                                {hasNextPageRecievers && (
+                                  <div className="flex items-center justify-center py-4 opacity-50">
+                                    <Spinner className="size-4" />
+                                  </div>
+                                )}
+                              </InfiniteScroll>
+                            </CommandGroup>
+                          ) : (
+                            <CommandEmpty>
+                              Không có người nhận hợp lệ nào
+                            </CommandEmpty>
+                          )
+
                         )
                       }
-                    </div>
-                  </RadioGroupPrimitive.Item>
-                ))}
-              </RadioGroupPrimitive.Root>
-              {fieldState.invalid && (
-                <FieldError errors={[fieldState.error]} />
-              )}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </Field>
           )}
         />
@@ -278,44 +374,11 @@ function CreateTransactionForm({ formId, onSubmit }: CreateTransactionFormProps)
                 <SelectContent>
                   {Object.values(TRANSACTION_CATEGORIES).map((category) => (
                     <SelectItem key={category} value={category}>
-                      {category}
+                      <span className="min-w-0 flex-1 truncate">{category}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {fieldState.invalid && (
-                <FieldError errors={[fieldState.error]} />
-              )}
-            </Field>
-          )}
-        />
-
-        <Controller
-          control={form.control}
-          name="transactionDate"
-          render={({ field, fieldState }) => (
-            <Field>
-              <FieldLabel htmlFor={formId + field.name}>Ngày giao dịch</FieldLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    data-empty={!field.value}
-                    className="w-[280px] justify-start text-left font-normal data-[empty=true]:text-muted-foreground"
-                  >
-                    <CalendarIcon />
-                    {field.value ? format(field.value, "dd/MM/yyyy") : <span>Chọn ngày giao dịch</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) => date > new Date(new Date().setHours(0, 0, 0, 0))}
-                  />
-                </PopoverContent>
-              </Popover>
               {fieldState.invalid && (
                 <FieldError errors={[fieldState.error]} />
               )}
@@ -365,7 +428,7 @@ function CreateTransactionForm({ formId, onSubmit }: CreateTransactionFormProps)
           name="note"
           render={({ field, fieldState }) => (
             <Field>
-              <FieldLabel htmlFor={formId + field.name}>Ghi chú</FieldLabel>
+              <FieldLabel htmlFor={formId + field.name}>Nội dung</FieldLabel>
               <Textarea
                 {...field}
                 id={formId + field.name}

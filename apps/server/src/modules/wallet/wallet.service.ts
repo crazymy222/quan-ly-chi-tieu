@@ -1,17 +1,22 @@
 import { Order } from '@/common/constants/pagination.const';
 import { REDIS_TTL, REDIS_VALUE, redisKey } from '@/common/constants/redis.const';
-import { PaginationOptionsDto } from '@/common/dtos/pagination-options.dto';
+import { UserRepository } from '@/common/repositories/user.repository';
 import { WalletRepository } from '@/common/repositories/wallet.repository';
 import { CachedService } from '@/libs/cached/cached.service';
 import { jsonParse } from '@/utils/common.utils';
-import { BadRequestException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Connection, Types } from 'mongoose';
 import { CreateWalletDto } from './dto/create-wallet.dto';
+import { GetAllWalletParamsDto } from './dto/get-all-wallet-params.dto';
+import { InjectConnection } from '@nestjs/mongoose';
 
 @Injectable()
 export class WalletService {
   constructor(
     private readonly walletRepository: WalletRepository,
-    private readonly cachedService: CachedService
+    private readonly cachedService: CachedService,
+    private readonly userRepository: UserRepository,
+    @InjectConnection() private readonly connection: Connection,
   ) { }
 
   async create(createWalletDto: CreateWalletDto, userId: string) {
@@ -24,14 +29,34 @@ export class WalletService {
       this.cachedService.del(redisKey.getWalletCountKey(userId)),
       this.cachedService.del(redisKey.getTotalBalanceKey(userId)),
     ]);
-    return this.walletRepository.create({ ...createWalletDto, userId });
+
+    const session = await this.connection.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const createdWallet = await this.walletRepository.create({ ...createWalletDto, userId }, { session });
+        const updatedUser = await this.userRepository.findOneAndUpdate({ _id: userId, defaultWallet: null }, { defaultWallet: createdWallet.id }, { session });
+        if (updatedUser) {
+          await this.cachedService.del(redisKey.getDefaultWalletKey(userId));
+        } else {
+          session.abortTransaction();
+          throw new NotFoundException('User not found');
+        }
+      });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to create wallet');
+    } finally {
+      await session.endSession();
+    }
   }
 
-  async findAll(paginationOptionsDto: PaginationOptionsDto, userId: string) {
-    const { page, take, order, sortField } = paginationOptionsDto;
+  async findAll(getAllWalletParamsDto: GetAllWalletParamsDto, userId: string) {
+    const { page, take, order, sortField, priorityId } = getAllWalletParamsDto;
     const versionKey = redisKey.getWalletListVersionKey(userId);
     const version = (await this.cachedService.get(versionKey)) || '0';
-    const key = redisKey.getWalletsPaginatedKey(userId, version, page, take, order);
+    const key = redisKey.getWalletsPaginatedKey(userId, version, getAllWalletParamsDto);
     const cachedData = await this.cachedService.get(key);
     if (cachedData) {
       try {
@@ -40,7 +65,11 @@ export class WalletService {
         await this.cachedService.del(key);
       }
     }
-    const data = await this.walletRepository.findAll({ user: userId, deletedAt: null }, {
+    const data = await this.walletRepository.findAll({
+       user: new Types.ObjectId(userId), 
+       deletedAt: null, 
+       priorityId: priorityId ? new Types.ObjectId(priorityId) : undefined
+       }, {
       skip: (page - 1) * take,
       limit: take,
       sort: { [sortField]: order === Order.ASC ? 1 : -1 },
@@ -106,4 +135,43 @@ export class WalletService {
     await this.cachedService.set(key, count.toString(), REDIS_TTL.DEFAULT);
     return count;
   }
+
+  async setDefaultWallet(walletId: string, userId: string) {
+    const wallet = await this.walletRepository.findOneByCondition({ _id: walletId, user: userId, deletedAt: null });
+    if (!wallet) {
+      throw new NotFoundException('Wallet not found');
+    }
+    const updatedUser = await this.userRepository.setDefaultWallet(userId, walletId);
+    if (updatedUser) {
+      await this.cachedService.del(redisKey.getDefaultWalletKey(userId));
+    } else {
+      throw new NotFoundException('Wallet not found');
+    }
+  }
+
+  async getDefaultWallet(userId: string) {
+    const key = redisKey.getDefaultWalletKey(userId);
+    const cachedData = await this.cachedService.get(key);
+    if (cachedData) {
+      try {
+        const data = jsonParse(cachedData);
+        if (!data) {
+          throw new NotFoundException('Default wallet not found');
+        }
+        return data;
+      } catch (error) {
+        if (error instanceof HttpException) {
+          throw error;
+        }
+        await this.cachedService.del(key);
+      }
+    }
+    const defaultWallet = await this.userRepository.getDefaultWallet(userId);
+    await this.cachedService.set(key, JSON.stringify(defaultWallet), REDIS_TTL.DEFAULT);
+    if (!defaultWallet) {
+      throw new NotFoundException('Default wallet not found');
+    }
+    return defaultWallet;
+  }
 }
+

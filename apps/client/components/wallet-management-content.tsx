@@ -1,13 +1,19 @@
 "use client"
 
-import { useGetInfiniteWallet } from "@/hooks/useGetInfiniteWallet";
+import { GET_DEFAULT_WALLET_QUERY_KEY, useGetDefaultWallet } from "@/hooks/useGetDefaultWallet";
+import { GET_PAGINATION_WALLET_QUERY_KEY, useGetInfiniteWallet } from "@/hooks/useGetInfiniteWallet";
 import { useGetWalletCount } from "@/hooks/useGetWalletCount";
+import { useInvalidateQueries } from "@/hooks/useRevalidateQuery";
+import { useUpdateDefaultWallet } from "@/hooks/useUpdateDefaultWallet";
+import { cn } from "@/lib/utils";
 import { useCreateWalletDialogStore } from "@/stores/useCreateWalletDialogStore";
 import { useShowBalanceStore } from "@/stores/useShowBalanceStore";
 import { useWalletManagementDialogStore } from "@/stores/useWalletManagementDialogStore";
+import { Wallet } from "@/types/wallet.type";
 import { format } from "date-fns";
 import { PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -24,8 +30,21 @@ export default function WalletManagementDialog() {
   );
   const openCreateWalletDialog = useCreateWalletDialogStore((state) => state.toggle);
 
+  const { defaultWallet } = useGetDefaultWallet();
+
   const { walletCount, isLoading } = useGetWalletCount();
-  const { wallets, totalCount, isLoading: isLoadingWallets, hasNextPage, isFetchingNextPage, fetchNextPage } = useGetInfiniteWallet();
+  const {
+    wallets,
+    totalCount,
+    isLoading: isLoadingWallets,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useGetInfiniteWallet({
+    params: {
+      priorityId: defaultWallet?.id,
+    }
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -51,7 +70,9 @@ export default function WalletManagementDialog() {
                       {
                         wallets.map((wallet, index) => (
                           <li key={wallet.id + index}>
-                            <WalletCard wallet={wallet} />
+                            <WalletCard
+                              wallet={wallet}
+                            />
                           </li>
                         ))
                       }
@@ -99,31 +120,91 @@ export default function WalletManagementDialog() {
 function WalletCard({ wallet }: { wallet: Wallet }) {
   const isShowBalance = useShowBalanceStore((state) => state.isShow);
   const [isOpen, setIsOpen] = useState(false);
+  const { defaultWallet } = useGetDefaultWallet();
+
+  const isDefaultWallet = useMemo(() => defaultWallet?.id === wallet.id, [defaultWallet, wallet]);
+  const invalidateQueries = useInvalidateQueries();
+
+  const { updateDefaultWallet, isPending } = useUpdateDefaultWallet({
+    onSuccess: () => {
+      invalidateQueries([
+        [GET_DEFAULT_WALLET_QUERY_KEY],
+        [GET_PAGINATION_WALLET_QUERY_KEY],
+      ]);
+      toast.success("Đặt ví mặc định thành công");
+    },
+    onError: () => {
+      toast.error("Đã xảy ra lỗi khi đặt ví mặc định, vui lòng thử lại sau.");
+    },
+  });
 
   return (
     <>
-      <button
-        type="button"
-        className="flex flex-col gap-2 rounded-lg p-3 bg-white w-full"
-        onClick={() => setIsOpen(true)}
+      <div
+        className={cn(
+          "flex flex-col gap-2 rounded-lg p-3 pb-1.5 bg-white w-full",
+        )}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">{wallet.name}</h2>
-          </div>
+        <div className="flex items-center justify-between gap-x-4 w-full overflow-hidden">
+          <h2
+            className="font-semibold truncate"
+            title={wallet.name}
+          >
+            {wallet.name}
+          </h2>
           <span>
             {isShowBalance ? wallet.balance.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) : '**********'}
           </span>
         </div>
-      </button>
+        <div className="flex items-center gap-x-2 justify-between">
+          {
+            !isDefaultWallet ? (
+              <Button
+                variant="link"
+                size="xs"
+                className="p-0"
+                disabled={isPending}
+                onClick={() => updateDefaultWallet(wallet.id)}
+              >
+                Đặt làm ví mặc định
+              </Button>
+            ) : (
+              <span
+                className="text-xs text-white font-semibold bg-primary rounded-md px-2 py-0.5"
+                title="Nguồn nhận tiền mặc định"
+              >
+                Ví mặc định
+              </span>
+            )
+          }
+          <Button
+            variant="link"
+            size="xs"
+            className="p-0"
+            onClick={() => setIsOpen(true)}
+
+          >
+            Xem thông tin
+          </Button>
+        </div>
+      </div>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">{wallet.name}</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-center">
+              Thông tin ví
+            </DialogTitle>
           </DialogHeader>
           <div className="-mx-4 no-scrollbar flex-1 flex flex-col overflow-y-auto px-4">
             <div className="flex flex-col gap-1.5">
-
+              <div className="flex items-center justify-between gap-x-4">
+                <p className="text-sm text-muted-foreground">
+                  Tên ví
+                </p>
+                <p className="text-sm font-semibold">
+                  {wallet.name}
+                </p>
+              </div>
               <div className="flex items-center justify-between gap-x-4">
                 <p className="text-sm text-muted-foreground">
                   Số dư

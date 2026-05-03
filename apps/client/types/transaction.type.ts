@@ -1,5 +1,7 @@
 import { TransactionType } from "@/constants/transaction.const";
 import { PaginationParams } from "./api-response.type";
+import { Wallet } from "./wallet.type";
+import { IUserProfile } from "./user.type";
 
 export interface GetTotalIncomeAndExpenseResponse {
   totalIncome: number;
@@ -8,9 +10,10 @@ export interface GetTotalIncomeAndExpenseResponse {
 
 export interface Transaction {
   id: string;
+  transferId: string;
   transactionType: TransactionType;
   amount: number;
-  transactionDate: Date;
+  createdAt: Date;
   note: string | null;
   transactionCategory: string;
   wallet: Wallet;
@@ -33,4 +36,8 @@ export interface GetStatisticsParams {
 export interface GetStatisticsResponse {
   totalIncome: number;
   totalExpense: number;
+}
+
+export interface GetDetailTransactionResponse extends Transaction {
+  peerUser: IUserProfile | null;
 }

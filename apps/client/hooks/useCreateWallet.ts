@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 interface Props {
-  onSuccess?: (data: Wallet) => void;
+  onSuccess?: () => void;
   onError?: (error: Error | AxiosError) => void;
 }
 

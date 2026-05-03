@@ -19,6 +19,13 @@ export type TransactionDocument = HydratedDocument<Transaction>;
 })
 export class Transaction extends BaseEntity {
   @Prop({
+    type: mongoose.Schema.Types.UUID,
+    required: true,
+    index: true,
+  })
+  transferId: string;
+
+  @Prop({
     enum: TransactionType,
     required: true,
   })
@@ -29,12 +36,6 @@ export class Transaction extends BaseEntity {
     required: true,
   })
   amount: number;
-
-  @Prop({
-    type: Date,
-    required: true,
-  })
-  transactionDate: Date;
 
   @Prop({
     type: String,
@@ -79,7 +80,7 @@ export class Transaction extends BaseEntity {
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);
 
 TransactionSchema.index(
-  { user: 1, wallet: 1, transactionDate: -1 },
+  { user: 1, wallet: 1, createdAt: -1 },
   { partialFilterExpression: { deletedAt: null }},
 );
 

@@ -1,4 +1,4 @@
-import { ClientSession, Model, QueryFilter, QueryOptions, SaveOptions, UpdateQuery } from "mongoose";
+import { ClientSession, Model, QueryFilter, QueryOptions, SaveOptions, Types, UpdateQuery } from "mongoose";
 import { BaseEntity } from "../entities/base.entity";
 
 export type FindAllResponse<T> = { count: number; items: T[] };
@@ -40,19 +40,16 @@ export abstract class BaseRepositoryAbstract<T extends BaseEntity> implements Ba
     const createdData = new this.model(dto);
     const savedData = await createdData.save(options as SaveOptions);
     return savedData.toJSON<T>({ virtuals: true });
-
   }
 
   async findOneById(id: string, options?: RepositoryOptions): Promise<T | null> {
-    const item = await this.model.findById(id, null, options).exec();
-    if (item?.deletedAt || !item) return null;
-    return item.toJSON<T>({ virtuals: true });
+    const item = await this.model.findOne({ _id: new Types.ObjectId(id), deletedAt: null }, null, { ...options, session: options?.session }).exec();
+    return item?.toJSON<T>({ virtuals: true }) ?? null;
   }
 
   async findOneByCondition(condition: QueryFilter<T>, options?: RepositoryOptions): Promise<T | null> {
-    const item = await this.model.findOne(condition, null, options).exec();
-    if (item?.deletedAt || !item) return null;
-    return item.toJSON<T>({ virtuals: true });
+    const item = await this.model.findOne(condition, null, { ...options, session: options?.session }).exec();
+    return item?.toJSON<T>({ virtuals: true }) ?? null;
   }
 
   async findAll(

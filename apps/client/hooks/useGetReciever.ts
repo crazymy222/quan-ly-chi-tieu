@@ -1,31 +1,35 @@
 import { PAGINATION_LIMIT } from "@/constants/api.const";
-import { getPaginationWallet } from "@/services/wallet.service";
+import { getReceivers } from "@/services/user.service";
 import { Order } from "@/types/api-response.type";
-import { GetWalletsParams } from "@/types/wallet.type";
+import { GetReciverParams } from "@/types/user.type";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
-export const GET_PAGINATION_WALLET_QUERY_KEY = 'get-pagination-wallet';
+export const GET_PAGINATION_RECIEVER_KEY = 'get-reciever';
 
 const DEFAULT_SORT_FIELD = 'createdAt';
 const DEFAULT_ORDER = Order.DESC;
 
 interface Props {
-  params?: GetWalletsParams;
+  params?: GetReciverParams;
   enabled?: boolean;
-}
+} 
 
-export const useGetInfiniteWallet = ({ params, enabled }: Props = { enabled: true }) => {
+export const useGetReciever = ({ params, enabled }: Props = { enabled: true, params: {} }) => {
+  const controller = useRef<AbortController>(new AbortController());
+
   const { data, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = useInfiniteQuery({
-    queryKey: [GET_PAGINATION_WALLET_QUERY_KEY, params],
+    queryKey: [GET_PAGINATION_RECIEVER_KEY, params],
     queryFn: async ({ pageParam = 1 }) => {
-      const { data } = await getPaginationWallet({
+      const { data } = await getReceivers({
         page: pageParam,
         take: params?.take || PAGINATION_LIMIT,
         sortField: params?.sortField || DEFAULT_SORT_FIELD,
         order: params?.order || DEFAULT_ORDER,
         ...params
-      })
+      },
+      controller.current.signal
+    )
       return data?.data;
     },
     getNextPageParam: (lastPage, allPages) => {
@@ -37,15 +41,18 @@ export const useGetInfiniteWallet = ({ params, enabled }: Props = { enabled: tru
     initialPageParam: 1,
     enabled,
   });
-
-  const { wallets, totalCount } = useMemo(() => ({
-    wallets: data?.pages.flatMap((page) => page.items) ?? [],
+  
+  const { recievers, totalCount } = useMemo(() => ({
+    recievers: data?.pages.flatMap((page) => page.items) ?? [],
     totalCount: data?.pages[0]?.count ?? 0,
   }), [data]);
 
+  const abort = useCallback(() => {
+    controller.current.abort();
+  }, []);
 
   return {
-    wallets,
+    recievers,
     totalCount,
     isLoading,
     isError,
@@ -53,5 +60,6 @@ export const useGetInfiniteWallet = ({ params, enabled }: Props = { enabled: tru
     isFetchingNextPage,
     fetchNextPage,
     refetch,
+    abort,
   }
-}
+} 

@@ -1,4 +1,4 @@
-import { CreateTransactionFormData } from "@/components/createTransactionDialog";
+import { CreateTransactionFormData } from "@/components/create-transaction-dialog";
 import { createTransaction } from "@/services/transaction.service";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";

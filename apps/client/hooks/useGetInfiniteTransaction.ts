@@ -12,7 +12,7 @@ interface Props {
   enabled?: boolean;
 }
 
-const DEFAULT_SORT_FIELD = 'transactionDate';
+const DEFAULT_SORT_FIELD = 'createdAt';
 
 export const useGetInfiniteTransaction = ({ params, enabled }: Props = { enabled: true }) => {
   const { data, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({

@@ -5,22 +5,18 @@ import { IsDate, IsEnum, IsIn, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsSt
 
 export class CreateTransactionDto {
   @IsNotEmpty()
-  @IsEnum(TransactionType)
-  transactionType: TransactionType;
-
-  @IsNotEmpty()
   @IsNumber()
   @Min(0)
   amount: number;
 
   @IsNotEmpty()
-  @IsDate()
-  @Type(() => Date)
-  transactionDate: Date;
-
-  @IsNotEmpty()
   @IsIn(Object.values(TRANSACTION_CATEGORIES))
   transactionCategory: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @IsMongoId()
+  recieverId: string;
 
   @IsOptional()
   @IsString()

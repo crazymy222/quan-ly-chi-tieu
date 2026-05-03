@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Exclude } from "class-transformer";
-import { HydratedDocument } from "mongoose";
+import mongoose, { HydratedDocument } from "mongoose";
 import { BaseEntity } from "./base.entity";
 
 export type UserDocument = HydratedDocument<User>;
@@ -39,8 +39,16 @@ export class User extends BaseEntity {
   @Exclude({ toPlainOnly: true })
   password: string;
 
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet',
+    required: false,
+    default: null,
+  })
+  defaultWallet: mongoose.Types.ObjectId | null;
+
   createdAt: Date;
-  
+
   @Exclude()
   updatedAt: Date;
 }

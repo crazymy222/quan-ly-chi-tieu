@@ -1,3 +1,4 @@
+import { Order } from '@/common/constants/pagination.const';
 import { REDIS_TTL, redisKey } from '@/common/constants/redis.const';
 import { User } from '@/common/entities/user.entity';
 import { UserRepository } from '@/common/repositories/user.repository';
@@ -5,6 +6,7 @@ import { CachedService } from '@/libs/cached/cached.service';
 import { RegisterDto } from '@/modules/auth/dto/register.dto';
 import { jsonParse } from '@/utils/common.utils';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { GetReciverParamsDto } from './dto/get-reciver-params.dto';
 
 @Injectable()
 export class UserService {
@@ -52,4 +54,8 @@ export class UserService {
     return !!result;
   }
 
+  async getReceivers(params: GetReciverParamsDto, uid: string) {
+    const { page, take, sortField, order, search } = params;
+    return this.userRepository.getReceivers(uid, { search }, { sortField, order, page, take });
+  }  
 }

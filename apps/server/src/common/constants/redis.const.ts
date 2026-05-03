@@ -1,3 +1,6 @@
+import { GetAllWalletParamsDto } from "@/modules/wallet/dto/get-all-wallet-params.dto"
+import querystring from "querystring"
+
 export const redisKey = {
   // session
   getTokenBlackListKey: (uid: string, jti: string) => `user:uid:${uid}:session-black-list:${jti}`,
@@ -9,12 +12,21 @@ export const redisKey = {
   // wallet
   getWalletsKey: (uid: string) => `user:uid:${uid}:wallets`,
   getWalletListVersionKey: (uid: string) => `user:uid:${uid}:wallets:version`,
-  getWalletsPaginatedKey: (uid: string, version: string | number, page: number, take: number, order: string) =>
-    `user:uid:${uid}:wallets:v:${version}:p:${page}:t:${take}:o:${order}`,
+  getWalletsPaginatedKey: (uid: string, version: string | number, params: GetAllWalletParamsDto) => {
+    const queryString = querystring.stringify({
+      page: params.page,
+      take: params.take,
+      order: params.order,
+      sortField: params.sortField,
+      priorityId: params.priorityId,
+    });
+    return `user:uid:${uid}:wallets:v:${version}:params?${queryString}`
+  },
   getWalletByIdKey: (uid: string, id: string) => `user:uid:${uid}:wallet:${id}`,
   getWalletExistKey: (uid?: string, id?: string, name?: string) => `wallet:${uid ? `uid:${uid}:` : ''}${id ? `id:${id}:` : ''}${name ? `name:${name}:` : ''}exist`,
   getTotalBalanceKey: (uid: string) => `user:uid:${uid}:total-balance`,
   getWalletCountKey: (uid: string) => `user:uid:${uid}:wallet-count`,
+  getDefaultWalletKey: (uid: string) => `user:uid:${uid}:default-wallet`,
 }
 
 export const REDIS_TTL = {

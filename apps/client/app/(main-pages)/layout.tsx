@@ -1,7 +1,7 @@
 "use client"
 
 import CreateWalletDialog from "@/components/create-wallet-dialog";
-import CreateTransactionDialog from "@/components/createTransactionDialog";
+import CreateTransactionDialog from "@/components/create-transaction-dialog";
 import Header from "@/components/header";
 import TransactionHistoryDialog from "@/components/transaction-history-dialog";
 import WalletManagementDialog from "@/components/wallet-management-content";
