@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, QueryFilter, QueryOptions, Types } from "mongoose";
+import { AggregateOptions, Model, QueryFilter, QueryOptions, Types } from "mongoose";
 import { DEFAULT_SORT_FIELD, DEFAULT_TAKE } from "../constants/pagination.const";
-import { Transaction, TransactionType } from "../entities/transaction.entity";
+import { Transaction, TransactionDocument, TransactionType } from "../entities/transaction.entity";
 import { User } from "../entities/user.entity";
 import { BaseRepositoryAbstract, BaseRepositoryInterface, FindAllResponse, RepositoryOptions } from "./base.repository";
 
@@ -165,5 +165,115 @@ export class TransactionRepository extends BaseRepositoryAbstract<Transaction> i
     }
 
     return this.userModel.hydrate(peerUserDoc).toJSON<User>({ virtuals: true });
+  }
+
+  getTransactionWithCursor(
+    query: {
+      user: string;
+      wallet?: string;
+      fromDate?: Date;
+      toDate?: Date;
+      transactionType?: TransactionType;
+      transferId?: string;
+    },
+    batchSize?: number,
+    options?: AggregateOptions,
+  ) {
+    const { user, wallet, fromDate, toDate, transactionType, transferId } = query;
+    const dateRange = this.createdAtHalfOpenRange(fromDate, toDate);
+    return this.transactionRepository
+      .aggregate([
+        {
+          $match: {
+            ...(user ? { user: new Types.ObjectId(user) } : {}),
+            ...(wallet ? { wallet: new Types.ObjectId(wallet) } : {}),
+            ...(dateRange ? { createdAt: dateRange } : {}),
+            ...(transactionType ? { transactionType } : {}),
+            ...(transferId ? { transferId } : {}),
+          },
+        },
+        {
+          $addFields: { actorUserId: '$user' },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'user',
+            pipeline: [
+              { $match: { deletedAt: null } },
+              { $project: { displayName: 1, email: 1 } },
+            ],
+          },
+        },
+        { $unwind: '$user' },
+        {
+          $lookup: {
+            from: 'wallets',
+            localField: 'wallet',
+            foreignField: '_id',
+            as: 'wallet',
+            pipeline: [
+              { $match: { deletedAt: null } },
+              { $project: { name: 1 } },
+            ],
+          },
+        },
+        { $unwind: '$wallet' },
+        {
+          $lookup: {
+            from: 'transactions',
+            let: { tid: '$transferId', actorId: '$actorUserId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$transferId', '$$tid'] },
+                      { $ne: ['$user', '$$actorId'] },
+                    ],
+                  },
+                  deletedAt: null,
+                },
+              },
+              { $limit: 1 },
+              { $project: { peerUserId: '$user' } },
+            ],
+            as: '_peerTxn',
+          },
+        },
+        { $unwind: { path: '$_peerTxn', preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: 'users',
+            let: { peerId: '$_peerTxn.peerUserId' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$_id', '$$peerId'] },
+                  deletedAt: null,
+                },
+              },
+              { $project: { displayName: 1, email: 1 } },
+            ],
+            as: 'peerUser',
+          },
+        },
+        { $unwind: { path: '$peerUser', preserveNullAndEmptyArrays: true } },
+        {
+          $unset: ['actorUserId', '_peerTxn'],
+        },
+        {
+          $sort: { createdAt: -1, _id: -1 }
+        }
+      ])
+      .option({ ...options, allowDiskUse: true })
+      .cursor<Omit<TransactionDocument, 'user' | 'wallet'> & {
+        user: { displayName: string, email: string },
+        wallet: { name: string },
+        peerUser: { displayName: string, email: string }
+      }>
+      ({ batchSize: batchSize ?? 100000 })
   }
 }

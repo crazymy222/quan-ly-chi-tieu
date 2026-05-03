@@ -1,12 +1,13 @@
 import { User } from '@/common/decorators/user.decorator';
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, UseInterceptors } from '@nestjs/common';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
-import { TransactionService } from './transaction.service';
-import { GetTransactionHistoryParamsDto } from './dto/get-transaction-history-params.dto';
 import MongooseClassSerializerInterceptor from '@/common/interceptors/mongo-class-serializer.interceptor';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Res, UseInterceptors } from '@nestjs/common';
+import type { Response } from 'express';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { GetDetailTransactionResponseDto } from './dto/get-detail-transaction-response.dto';
 import { GetManyTransactionResponseDto } from './dto/get-many-transaction-response.dto';
 import { GetStatisticsParamsDto } from './dto/get-statistics-parasm.dto';
-import { GetDetailTransactionResponseDto } from './dto/get-detail-transaction-response.dto';
+import { GetTransactionHistoryParamsDto } from './dto/get-transaction-history-params.dto';
+import { TransactionService } from './transaction.service';
 
 @Controller('transaction')
 export class TransactionController {
@@ -41,6 +42,16 @@ export class TransactionController {
     @User('id') uid: string
   ) {
     return this.transactionService.getStatistics(getStatisticsParamsDto, uid);
+  }
+
+  @Get('excel-export')
+  @HttpCode(HttpStatus.OK)
+  excelExport(
+    @Query() getStatisticsParamsDto: GetStatisticsParamsDto,
+    @User('id') uid: string,
+    @Res() res: Response
+  ) {
+    return this.transactionService.excelExport(getStatisticsParamsDto, uid, res);
   }
 
   @Get(':id')

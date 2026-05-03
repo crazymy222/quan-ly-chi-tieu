@@ -43,7 +43,8 @@ export default function WalletManagementDialog() {
   } = useGetInfiniteWallet({
     params: {
       priorityId: defaultWallet?.id,
-    }
+    },
+    enabled: isOpen,
   });
 
   return (

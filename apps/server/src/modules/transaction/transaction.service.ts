@@ -13,7 +13,9 @@ import { GetStatisticsParamsDto } from './dto/get-statistics-parasm.dto';
 import { randomUUID } from 'crypto';
 import { UserRepository } from '@/common/repositories/user.repository';
 import { TRANSACTION_CATEGORIES } from '@/common/constants/transaction.const';
-
+import ExcelJS from 'exceljs';
+import type { Response } from 'express';
+import { format } from 'date-fns';
 @Injectable()
 export class TransactionService {
   constructor(
@@ -216,6 +218,94 @@ export class TransactionService {
         displayName: peerUser?.displayName,
         email: peerUser?.email,
       } : null
+    }
+  }
+
+  async excelExport(getStatisticsParamsDto: GetStatisticsParamsDto, userId: string, res: Response) {
+    const { walletId, fromDate, toDate } = getStatisticsParamsDto;
+    const uuid = randomUUID();
+    const filename = `${uuid}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(filename)}"`,
+    );
+
+    const MAX_ROWS_PER_SHEET = 100000;
+
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+      stream: res,
+      useStyles: false,
+      useSharedStrings: false,
+    });
+
+    const columns = [
+      { header: 'Mã giao dịch', key: 'transferId', width: 22 },
+      { header: 'Ví', key: 'wallet.name', width: 14 },
+      { header: 'Loại giao dịch', key: 'transactionType', width: 14 },
+      { header: 'Số tiền', key: 'amount', width: 14 },
+      { header: 'Số dư sau giao dịch', key: 'runningBalance', width: 14 },
+      { header: 'Danh mục', key: 'transactionCategory', width: 14 },
+      { header: 'Ngày giao dịch', key: 'createdAt', width: 22 },
+      { header: 'Người gửi/Người nhận', key: 'peerUser.displayName', width: 14 },
+      { header: 'Ghi chú', key: 'note', width: 22 },
+    ];
+
+    let rowsInCurrentSheet = 0
+    let sheetNum = 1;
+
+    let currentSheet = workbook.addWorksheet(`sheet ${sheetNum}`);
+
+    currentSheet.columns = columns;
+
+    const cursor = this.transactionRepository.getTransactionWithCursor(
+      {
+        user: userId,
+        wallet: walletId,
+        fromDate,
+        toDate,
+      },
+      MAX_ROWS_PER_SHEET,
+      {
+        allowDiskUse: true,
+      }
+    );
+
+    try {
+      for await (const doc of cursor) {
+        if (rowsInCurrentSheet >= MAX_ROWS_PER_SHEET) {
+          currentSheet.commit()
+
+          currentSheet = workbook.addWorksheet(`sheet ${++sheetNum}`);
+          currentSheet.columns = columns;
+          rowsInCurrentSheet = 0;
+        }
+        const row = currentSheet.addRow({
+          amount: doc.amount,
+          createdAt: format(doc.createdAt, 'dd/MM/yyyy'),
+          transferId: doc.transferId,
+          runningBalance: doc.runningBalance,
+          transactionCategory: doc.transactionCategory,
+          transactionType: doc.transactionType === TransactionType.INCOME ? 'Nhận' : 'Gửi',
+          note: doc?.note ?? '',
+          wallet: doc?.wallet?.name ?? '',
+          peerUser: doc?.peerUser?.displayName ?? '',
+          user: doc?.user?.displayName ?? '',
+        });
+        row.commit();
+        rowsInCurrentSheet++;
+      }
+
+    } catch (error) {
+      if (!res.headersSent) throw error;
+      res.destroy?.(error instanceof Error ? error : undefined);
+    } finally {
+      await cursor.close();
+      currentSheet.commit();
+      await workbook.commit();
     }
   }
 }

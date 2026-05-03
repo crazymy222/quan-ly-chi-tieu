@@ -17,7 +17,7 @@ export default function TransactionHistoryCard({ transaction }: { transaction: T
 
   const isIncome = useMemo(() => transaction.transactionType === TransactionType.INCOME, [transaction]);
 
-  const { detailTransaction, isLoading } = useGetDetailTransaction(transaction?.id);
+  const { detailTransaction, isLoading } = useGetDetailTransaction({ id: transaction?.id, enabled: isOpen });
 
   return (
     <>

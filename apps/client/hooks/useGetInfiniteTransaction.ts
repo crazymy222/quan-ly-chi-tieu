@@ -12,13 +12,12 @@ interface Props {
   enabled?: boolean;
 }
 
-const DEFAULT_SORT_FIELD = 'createdAt';
 
 export const useGetInfiniteTransaction = ({ params, enabled }: Props = { enabled: true }) => {
   const { data, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteQuery({
     queryKey: [GET_PAGINATION_TRANSACTION_QUERY_KEY, params],
     queryFn: async ({ pageParam = 1 }) => {
-      const { data } = await getTransactionHistory({ page: pageParam, take: PAGINATION_LIMIT, order: Order.DESC, sortField: DEFAULT_SORT_FIELD, ...params })
+      const { data } = await getTransactionHistory({ page: pageParam, take: PAGINATION_LIMIT, order: Order.DESC, ...params })
       return data?.data;
     },
     getNextPageParam: (lastPage, allPages) => {

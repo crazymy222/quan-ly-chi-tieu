@@ -5,6 +5,9 @@ export const redisKey = {
   // session
   getTokenBlackListKey: (uid: string, jti: string) => `user:uid:${uid}:session-black-list:${jti}`,
 
+  // rate limit
+  getRateLimitKey: (identifier: string | number, url: string) => `throttle:${identifier}:${url}`,
+
   // user
   getUserProfileByIdKey: (uid: string) => `user:uid:${uid}:profile`,
   getUserExistKey: (email: string) => `user:email:${email}:exist`,
