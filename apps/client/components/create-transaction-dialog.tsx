@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useCreateTransactionDialogStore } from "@/stores/useCreateTransactionDialogStore";
 import { useShowBalanceStore } from "@/stores/useShowBalanceStore";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Calendar, CalendarIcon, ChevronDownIcon, EyeIcon } from "lucide-react";
+import { ChevronDownIcon, EyeIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -32,7 +32,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Spinner } from "./ui/spinner";
 import { Textarea } from "./ui/textarea";
-import { format } from "date-fns";
 
 export default function CreateTransactionDialog() {
   const formId = useId();
