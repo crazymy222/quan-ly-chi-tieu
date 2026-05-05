@@ -96,20 +96,73 @@ export class TransactionRepository extends BaseRepositoryAbstract<Transaction> i
       this.transactionRepository
         .aggregate<Transaction[]>([
           { $match: match },
-          { $sort: options?.sort ?? { [DEFAULT_SORT_FIELD]: -1 } },
-          { $skip: options?.skip ?? 0 },
-          { $limit: options?.limit ?? DEFAULT_TAKE },
+          { $sort: { createdAt: -1 } },
+
           {
             $lookup: {
-              from: 'wallets',
-              let: { walletId: '$wallet' },
+              from: "wallets",
+              localField: "wallet",
+              foreignField: "_id",
+              as: "wallet",
               pipeline: [
-                { $match: { $expr: { $eq: ['$$walletId', '$_id'] } } },
-              ],
-              as: 'wallet'
-            },
+                { $unset: ["user", "createdAt", "updatedAt"] },
+              ]
+            }
           },
-          { $unwind: '$wallet' },
+          { $unwind: "$wallet" },
+
+          {
+            $addFields: {
+              signedAmount: {
+                $cond: {
+                  if: { $eq: ["$transactionType", TransactionType.EXPENSE] },
+                  then: { $multiply: ["$amount", -1] },
+                  else: "$amount"
+                }
+              }
+            }
+          },
+
+          {
+            $setWindowFields: {
+              partitionBy: "$wallet",
+              sortBy: { createdAt: -1 },
+              output: {
+                sumOfAmountFromLatestToCurrent: {
+                  $sum: "$signedAmount",
+                  window: { documents: ["unbounded", -1] }
+                }
+              }
+            }
+          },
+
+          {
+            $addFields: {
+              balanceAfter: {
+                $subtract: ["$wallet.balance", { $ifNull: ["$sumOfAmountFromLatestToCurrent", 0] }]
+              }
+            }
+          },
+          {
+            $addFields: {
+              balanceBefore: {
+                $cond: {
+                  if: { $eq: ["$transactionType", TransactionType.INCOME] },
+                  then: { $subtract: ["$balanceAfter", "$amount"] },
+                  else: { $add: ["$balanceAfter", "$amount"] }
+                }
+              }
+            }
+          },
+
+          {
+            $unset: ["sumOfAmountFromLatestToCurrent", "signedAmount"]
+          },
+
+          { $sort: options?.sort ?? { [DEFAULT_SORT_FIELD]: -1 } },
+
+          { $skip: options?.skip ?? 0 },
+          { $limit: options?.limit ?? DEFAULT_TAKE },
         ])
         .exec(),
     ]);

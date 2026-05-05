@@ -29,19 +29,20 @@ export default function TransactionHistoryCard({ transaction }: { transaction: T
           <p className={cn('font-bold', isIncome ? 'text-green-500' : 'text-red-500')}>
             {
               isShowBalance
-                ? (`${isIncome ? '+' : '-'}${transaction.amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}`)
+                ? (`${isIncome ? '+' : '-'}${transaction.amount?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}`)
                 : '**********'
             }
           </p>
         </div>
+      
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
             {format(transaction.createdAt, 'dd/MM/yyyy')}
           </p>
           <p className="text-xs text-muted-foreground">
-            Số dư ví: {
+            Số dư ví sau giao dịch: {
               isShowBalance
-                ? transaction.runningBalance.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
+                ? transaction.balanceAfter.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
                 : '**********'
             }
           </p>
@@ -118,13 +119,22 @@ export default function TransactionHistoryCard({ transaction }: { transaction: T
 
               <div className="flex items-center justify-between gap-x-4">
                 <p className="text-sm text-muted-foreground">
-                  Số dư sau giao dịch
+                  Số dư trước giao dịch
                 </p>
                 <p className="text-sm font-semibold">
-                  {isShowBalance ? transaction.runningBalance.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) : '**********'}
+                  {isShowBalance ? transaction.balanceBefore.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) : '**********'}
                 </p>
               </div>
 
+              <div className="flex items-center justify-between gap-x-4">
+                <p className="text-sm text-muted-foreground">
+                  Số dư ví sau giao dịch
+                </p>
+                <p className="text-sm font-semibold">
+                  {isShowBalance ? transaction.balanceAfter.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' }) : '**********'}
+                </p>
+              </div>
+             
               <div className="flex items-center justify-between gap-x-4">
                 <p className="text-sm text-muted-foreground">
                   Ghi chú

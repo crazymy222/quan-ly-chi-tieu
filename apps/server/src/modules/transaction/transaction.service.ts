@@ -287,7 +287,6 @@ export class TransactionService {
           amount: doc.amount,
           createdAt: format(doc.createdAt, 'dd/MM/yyyy'),
           transferId: doc.transferId,
-          runningBalance: doc.runningBalance,
           transactionCategory: doc.transactionCategory,
           transactionType: doc.transactionType === TransactionType.INCOME ? 'Nhận' : 'Gửi',
           note: doc?.note ?? '',

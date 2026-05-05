@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useCreateTransactionDialogStore } from "@/stores/useCreateTransactionDialogStore";
 import { useShowBalanceStore } from "@/stores/useShowBalanceStore";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDownIcon, EyeIcon } from "lucide-react";
+import { Calendar, CalendarIcon, ChevronDownIcon, EyeIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Spinner } from "./ui/spinner";
 import { Textarea } from "./ui/textarea";
+import { format } from "date-fns";
 
 export default function CreateTransactionDialog() {
   const formId = useId();
@@ -88,8 +89,10 @@ export default function CreateTransactionDialog() {
 }
 
 const formSchema = z.object({
-  amount: z.number().min(0),
-  transactionCategory: z.enum(Object.values(TRANSACTION_CATEGORIES) as [string, ...string[]], { message: "Vui lòng chọn loại giao dịch" }),
+  amount: z.number()
+  .min(0),
+  transactionCategory: z
+  .enum(Object.values(TRANSACTION_CATEGORIES) as [string, ...string[]], { message: "Vui lòng chọn loại giao dịch" }),
   walletId: z
     .string()
     .trim()
@@ -100,7 +103,7 @@ const formSchema = z.object({
     .min(1, { message: "Vui lòng chọn người nhận" }),
   note: z
     .string()
-    .trim()
+    .trim(),
 });
 
 export type CreateTransactionFormData = z.infer<typeof formSchema>

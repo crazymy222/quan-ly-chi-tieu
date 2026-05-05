@@ -64,13 +64,6 @@ export class Transaction extends BaseEntity {
   })
   wallet: mongoose.Types.ObjectId;
 
-  @Prop({
-    type: Number,
-    required: true,
-    default: 0,
-  })
-  runningBalance: number;
-
   createdAt: Date;
   
   @Exclude()

@@ -38,7 +38,6 @@ export class WalletService {
         if (updatedUser) {
           await this.cachedService.del(redisKey.getDefaultWalletKey(userId));
         } else {
-          session.abortTransaction();
           throw new NotFoundException('User not found');
         }
       });
