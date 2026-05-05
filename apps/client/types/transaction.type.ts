@@ -18,7 +18,8 @@ export interface Transaction {
   transactionCategory: string;
   wallet: Wallet;
   userId: string;
-  runningBalance: number;
+  balanceBefore: number;
+  balanceAfter: number;
 }
 
 export interface GetTransactionHistoryParams extends PaginationParams {

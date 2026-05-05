@@ -88,8 +88,10 @@ export default function CreateTransactionDialog() {
 }
 
 const formSchema = z.object({
-  amount: z.number().min(0),
-  transactionCategory: z.enum(Object.values(TRANSACTION_CATEGORIES) as [string, ...string[]], { message: "Vui lòng chọn loại giao dịch" }),
+  amount: z.number()
+  .min(0),
+  transactionCategory: z
+  .enum(Object.values(TRANSACTION_CATEGORIES) as [string, ...string[]], { message: "Vui lòng chọn loại giao dịch" }),
   walletId: z
     .string()
     .trim()
@@ -100,7 +102,7 @@ const formSchema = z.object({
     .min(1, { message: "Vui lòng chọn người nhận" }),
   note: z
     .string()
-    .trim()
+    .trim(),
 });
 
 export type CreateTransactionFormData = z.infer<typeof formSchema>
